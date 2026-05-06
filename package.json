@@ -1,4 +1,13 @@
-"scripts": {
-  "start": "node index.js"
+{
+  "name": "backend-app",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
 }
 

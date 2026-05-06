@@ -15,7 +15,8 @@ import {
   BookOpen,
   PieChart,
   School,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { type SubjectStat, SUBJECT_MAP } from './types.ts';
@@ -38,6 +39,18 @@ export default function App() {
     return (points / max) * 100;
   };
 
+  const deleteSubject = (code: string) => {
+    if (!data) return;
+    const newData = { ...data };
+    delete newData[code];
+    setData(newData);
+    
+    const stats = Object.values(newData);
+    const totalPoints = stats.reduce((sum, s) => sum + s.pointsEarned, 0);
+    const totalMax = stats.reduce((sum, s) => sum + s.maxPoints, 0);
+    setOverallPI(totalMax > 0 ? (totalPoints / totalMax) * 100 : 0);
+  };
+
   const processText = useCallback(async (text: string) => {
     setIsProcessing(true);
     setError(null);
@@ -49,7 +62,6 @@ export default function App() {
       let totalPasses = 0;
       
       const rollRegex = /\b\d{7,9}\b/;
-      const codeRegex = /\b\d{3}\b/g;
       const resultRegex = /\b(\d{2,3})\s+([A-E][1-2]?)\b/g;
 
       let currentRoll: string | null = null;
@@ -70,16 +82,31 @@ export default function App() {
           }
 
           currentRoll = rollMatch[0];
-          // Extract codes from this line (excluding the roll)
-          const allNumbers = line.match(/\b\d{7,9}|\d{3}\b/g) || [];
-          currentCodes = allNumbers.filter(n => n.length === 3);
+          
+          // Extract codes from this line. 
+          // Noise reduction: Subject codes in CBSE files appear in a row/cluster.
+          // We look for sequences of 3-digit numbers to distinguish from isolated IDs.
+          const subjectClusterRegex = /(?:\b\d{3}\b\s+){2,}\b\d{3}\b/g;
+          const clusterMatches = line.match(subjectClusterRegex);
+          
+          if (clusterMatches) {
+            currentCodes = clusterMatches.flatMap(m => m.match(/\d{3}/g) || []);
+          } else {
+            // Fallback: only take 3-digit numbers that are NOT at the very start 
+            // (often roll or sex prefix) and are in some proximity to others.
+            const allNumbers = line.match(/\b\d{3}\b/g) || [];
+            currentCodes = allNumbers.filter((n, idx) => idx > 1); 
+          }
           studentResults = [];
           
           // Scan subsequent lines for results matching these codes
           let j = i + 1;
           while (j < lines.length && studentResults.length < currentCodes.length) {
             const nextLine = lines[j].trim();
-            if (nextLine.match(rollRegex)) break;
+            // Stop if we hit a new roll number or a major separator (like page headers)
+            if (nextLine.match(rollRegex) || nextLine.includes('ROLL NO') || nextLine.includes('RESULT')) {
+              break;
+            }
             
             const results = [...nextLine.matchAll(resultRegex)];
             results.forEach(match => {
@@ -367,8 +394,9 @@ export default function App() {
                         <th className="p-4 text-xs font-bold text-slate-400 uppercase text-center">D</th>
                         <th className="p-4 text-xs font-bold text-slate-400 uppercase text-center text-red-500">E</th>
                         <th className="p-4 text-xs font-bold text-slate-400 uppercase bg-blue-50/50 text-blue-600">Points</th>
-                        <th className="p-4 text-xs font-bold text-slate-400 uppercase">Pass %</th>
+                         <th className="p-4 text-xs font-bold text-slate-400 uppercase">Pass %</th>
                         <th className="p-4 text-xs font-bold text-slate-400 uppercase bg-blue-100/50 text-blue-800">PI</th>
+                        <th className="p-4 text-xs font-bold text-slate-400 uppercase text-center">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -414,6 +442,15 @@ export default function App() {
                           </td>
                           <td className="p-4 bg-blue-100/20">
                             <p className="text-lg font-black text-blue-700">{stat.pi.toFixed(2)}</p>
+                          </td>
+                          <td className="p-4 text-center">
+                            <button
+                              onClick={() => deleteSubject(stat.code)}
+                              className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors group"
+                              title="Delete noise subject"
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </td>
                         </motion.tr>
                       ))}

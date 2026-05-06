@@ -1,0 +1,6 @@
+{
+  "name": "CBSE Result PI Calculator",
+  "description": "A specialized tool for CBSE Class 12 results to calculate subject-wise and school Performance Index (PI) from text file uploads, with Excel export capabilities.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

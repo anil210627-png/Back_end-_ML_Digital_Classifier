@@ -1,33 +1,39 @@
 import express from "express";
 import cors from "cors";
+import multer from "multer";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// Home route
+const upload = multer({ dest: "uploads/" });
+
 app.get("/", (req, res) => {
-  res.send("KVS ML Backend Running 🚀");
+    res.send("KVS ML Backend Running 🚀");
 });
 
-// Prediction route
-app.post("/predict", (req, res) => {
+app.post("/predict", upload.single("file"), (req, res) => {
 
-  const data = req.body;
+    const text = req.body.text;
 
-  console.log("Received Data:", data);
+    let fileName = null;
 
-  // Dummy prediction
-  res.json({
-    success: true,
-    prediction: "Analysis Completed Successfully",
-    received: data
-  });
+    if(req.file){
+        fileName = req.file.originalname;
+    }
+
+    res.json({
+        success: true,
+        message: "Prediction Successful ✅",
+        entered_text: text,
+        uploaded_file: fileName
+    });
+
 });
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
